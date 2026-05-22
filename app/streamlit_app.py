@@ -763,7 +763,7 @@ def render_workflow_intro():
         <section class="cursor-workflow-intro">
             <p class="cursor-eyebrow">Workflow</p>
             <h2>Workflow</h2>
-            <p>검색 URL 생성부터 결과 파일 저장까지 단계별 상태를 보며 공고 평가 흐름을 실행합니다.</p>
+            <p>검색 URL 생성부터 결과 파일 저장까지 상태와 데이터 타입 계약이 어떻게 이어지는지 함께 확인합니다.</p>
             <div class="cursor-status-key">
                 <span class="cursor-chip">대기</span>
                 <span class="cursor-chip is-live">진행중</span>

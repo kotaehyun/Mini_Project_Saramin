@@ -3,12 +3,19 @@
       <div id="space-flow-fallback">
         LangGraph 3D flow is loading...
       </div>
+      <section id="space-flow-type-map" aria-label="LangGraph data contract flow">
+        <div class="type-map-head">
+          <span>Data contract flow</span>
+          <small>node input type -> state mutation -> output type</small>
+        </div>
+        <div id="space-flow-contract-rail"></div>
+      </section>
     </div>
 
     <style>
       #space-flow-root {
         width: 100%;
-        height: 520px;
+        height: 820px;
         position: relative;
         overflow: hidden;
         border: 1px solid #212327;
@@ -42,7 +49,7 @@
       #space-flow-help {
         position: absolute;
         left: 16px;
-        bottom: 14px;
+        bottom: 298px;
         padding: 8px 10px;
         color: #ffffff;
         background: rgba(10, 10, 10, 0.92);
@@ -56,7 +63,9 @@
         position: absolute;
         right: 16px;
         top: 14px;
-        min-width: 170px;
+        width: min(360px, calc(100% - 32px));
+        max-height: 320px;
+        overflow: auto;
         padding: 10px 12px;
         color: #ffffff;
         background: rgba(25, 25, 25, 0.94);
@@ -97,7 +106,7 @@
       #space-flow-actions {
         position: absolute;
         right: 16px;
-        bottom: 14px;
+        bottom: 298px;
         display: flex;
         gap: 6px;
         flex-wrap: wrap;
@@ -122,6 +131,158 @@
         background: #ffffff;
         border-color: #ffffff;
       }
+      #space-flow-type-map {
+        position: absolute;
+        right: 16px;
+        bottom: 14px;
+        left: 16px;
+        height: 260px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 10px;
+        padding: 14px;
+        color: #ffffff;
+        background: rgba(10, 10, 10, 0.96);
+        border: 1px solid #212327;
+        border-radius: 8px;
+      }
+      .type-map-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        color: #ffffff;
+        font: 400 12px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+      }
+      .type-map-head small {
+        color: #7d8187;
+        font: 400 11px "Inter", system-ui, sans-serif;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+      #space-flow-contract-rail {
+        min-height: 0;
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+      }
+      .contract-step {
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .contract-link {
+        width: 34px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 34px;
+        color: #a0c3ec;
+        font: 400 20px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+      }
+      .contract-card {
+        width: 270px;
+        min-height: 0;
+        padding: 12px;
+        display: grid;
+        align-content: start;
+        gap: 9px;
+        color: #dadbdf;
+        cursor: pointer;
+        background: #191919;
+        border: 1px solid #212327;
+        border-radius: 8px;
+      }
+      .contract-card.is-selected {
+        border-color: rgba(255, 255, 255, 0.72);
+      }
+      .contract-node {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        color: #ffffff;
+        font: 400 12px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+      }
+      .contract-node em {
+        color: #7d8187;
+        font-style: normal;
+        letter-spacing: 0;
+      }
+      .contract-io {
+        display: grid;
+        gap: 4px;
+      }
+      .contract-io b,
+      #space-flow-info b {
+        color: #7d8187;
+        font: 400 10px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .contract-io code {
+        color: #ffffff;
+        font: 400 11px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+        white-space: normal;
+        word-break: break-word;
+      }
+      .info-title {
+        margin-bottom: 8px;
+        display: grid;
+        gap: 3px;
+      }
+      .info-title strong {
+        color: #ffffff;
+        font: 400 18px "Inter", system-ui, sans-serif;
+      }
+      .info-title span {
+        color: #a0c3ec;
+        font: 400 11px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+      }
+      .info-role {
+        margin: 0 0 10px;
+        color: #dadbdf;
+        line-height: 1.45;
+      }
+      .info-grid {
+        display: grid;
+        gap: 8px;
+      }
+      .info-list {
+        display: grid;
+        gap: 3px;
+      }
+      .info-list code {
+        color: #ffffff;
+        font: 400 11px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+        white-space: normal;
+        word-break: break-word;
+      }
+      @media (max-width: 720px) {
+        #space-flow-root {
+          height: 900px;
+        }
+        #space-flow-progress {
+          width: 180px;
+        }
+        #space-flow-info {
+          top: 120px;
+          width: calc(100% - 32px);
+          max-height: 218px;
+        }
+        #space-flow-actions,
+        #space-flow-help {
+          bottom: 298px;
+        }
+        .type-map-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
     </style>
 
     <script type="importmap">
@@ -138,7 +299,8 @@
 
       const root = document.getElementById("space-flow-root");
       const fallback = document.getElementById("space-flow-fallback");
-      const nodeData = [{"name": "START", "label": "START", "status": "완료", "order": 0}, {"name": "검색 URL 생성", "label": "URL", "status": "대기", "order": 1}, {"name": "사람인 공고 크롤링", "label": "CRAWL", "status": "대기", "order": 2}, {"name": "공고 데이터 전처리", "label": "PREP", "status": "대기", "order": 3}, {"name": "LLM 적합도 평가", "label": "LLM", "status": "대기", "order": 4}, {"name": "결과 요약 생성", "label": "SUM", "status": "대기", "order": 5}, {"name": "결과 파일 저장", "label": "SAVE", "status": "대기", "order": 6}, {"name": "END", "label": "END", "status": "완료", "order": 7}];
+      const contractRail = document.getElementById("space-flow-contract-rail");
+      const nodeData = [{"name": "START", "label": "START", "status": "완료", "order": 0, "contract": {"module": "run_job_search_workflow*", "role": "사용자 요청을 LangGraph 상태로 초기화", "inputs": ["keyword: str", "user_profile: Dict[str, Any]"], "outputs": ["state: JobSearchState"], "reads": ["CLI or Streamlit form values"], "writes": ["keyword: str", "user_profile: Dict[str, Any]", "raw_jobs: List[Dict[str, Any]] = []", "processed_jobs: List[Dict[str, Any]] = []", "evaluation_results: List[Dict[str, Any]] = []", "summary: Dict[str, Any] = {}", "error: str = ''"]}}, {"name": "검색 URL 생성", "label": "URL", "status": "대기", "order": 1, "contract": {"module": "crawlers.saramin_crawler.generate_search_url", "role": "검색어와 페이지 번호를 사람인 목록 URL로 변환", "inputs": ["keyword: str", "page: int"], "outputs": ["search_url: str"], "reads": ["state.keyword: str"], "writes": ["HTTP request target URL: str"]}}, {"name": "사람인 공고 크롤링", "label": "CRAWL", "status": "대기", "order": 2, "contract": {"module": "graphs.job_graph.crawl_jobs_node", "role": "사람인 목록 응답을 공고 딕셔너리 목록으로 추출", "inputs": ["state: JobSearchState", "state.keyword: str"], "outputs": ["raw_jobs: List[Dict[str, Any]]", "raw_jobs[i]: JobPosting-like dict"], "reads": ["keyword: str", "search_url: str per page"], "writes": ["state.raw_jobs: List[Dict[str, Any]]", "state.error: str"]}}, {"name": "공고 데이터 전처리", "label": "PREP", "status": "대기", "order": 3, "contract": {"module": "graphs.job_graph.preprocess_jobs_node", "role": "공고를 정제하고 LLM용 설명 문자열을 추가", "inputs": ["raw_jobs: List[Dict[str, Any]]"], "outputs": ["processed_jobs: List[Dict[str, Any]]", "processed_jobs[i].job_description: str"], "reads": ["state.raw_jobs: List[Dict[str, Any]]"], "writes": ["state.processed_jobs: List[Dict[str, Any]]", "state.error: str"]}}, {"name": "LLM 적합도 평가", "label": "LLM", "status": "대기", "order": 4, "contract": {"module": "graphs.job_graph.filter_jobs_node", "role": "프로필과 공고를 비교해 공고별 평가 JSON 생성", "inputs": ["user_profile: Dict[str, Any]", "processed_jobs: List[Dict[str, Any]]"], "outputs": ["evaluation_results: List[Dict[str, Any]]", "evaluation_results[i]: EvaluationResult-like dict"], "reads": ["state.user_profile: Dict[str, Any]", "state.processed_jobs: List[Dict[str, Any]]"], "writes": ["state.evaluation_results: List[Dict[str, Any]]", "state.error: str"]}}, {"name": "결과 요약 생성", "label": "SUM", "status": "대기", "order": 5, "contract": {"module": "graphs.job_graph.summarize_result_node", "role": "평가 결과 빈도와 추천 요약을 생성", "inputs": ["user_profile: Dict[str, Any]", "evaluation_results: List[Dict[str, Any]]"], "outputs": ["summary: Dict[str, Any]"], "reads": ["state.user_profile: Dict[str, Any]", "state.evaluation_results: List[Dict[str, Any]]"], "writes": ["state.summary: Dict[str, Any]", "state.error: str"]}}, {"name": "결과 파일 저장", "label": "SAVE", "status": "대기", "order": 6, "contract": {"module": "utils.output_formatter + Streamlit caller", "role": "평가 산출물을 다운로드 가능한 파일로 저장", "inputs": ["evaluation_results: List[Dict[str, Any]]", "summary: Dict[str, Any]", "user_profile: Dict[str, Any]"], "outputs": ["json_path: str", "csv_path: str", "md_path: str"], "reads": ["state.evaluation_results: List[Dict[str, Any]]", "state.summary: Dict[str, Any]"], "writes": ["data/results/*.json", "data/results/*.csv", "data/results/*.md"]}}, {"name": "END", "label": "END", "status": "완료", "order": 7, "contract": {"module": "LangGraph END / UI result surface", "role": "최종 상태와 저장 파일을 결과 화면으로 전달", "inputs": ["final_state: JobSearchState", "saved_paths: Dict[str, str] in caller"], "outputs": ["dashboard tables", "download files"], "reads": ["raw_jobs / processed_jobs", "evaluation_results / summary"], "writes": ["No further JobSearchState mutation"]}}];
       const progressData = {"completed": 0, "running": 0, "failed": 0, "total": 6, "percent": 0};
       const help = document.createElement("div");
       help.id = "space-flow-help";
@@ -160,8 +322,77 @@
 
       const info = document.createElement("div");
       info.id = "space-flow-info";
-      info.innerHTML = "Selected<br><span style='color:#a0c3ec'>LangGraph Flow</span>";
       root.appendChild(info);
+
+      let selectedOrder = 0;
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+      function contractList(title, values) {
+        return `
+          <div class="info-list">
+            <b>${escapeHtml(title)}</b>
+            ${values.map((value) => `<code>${escapeHtml(value)}</code>`).join("")}
+          </div>
+        `;
+      }
+      function updateContractSelection(order) {
+        selectedOrder = order;
+        contractRail.querySelectorAll(".contract-card").forEach((card) => {
+          card.classList.toggle("is-selected", Number(card.dataset.order) === order);
+        });
+      }
+      function showContract(node, themeName = "") {
+        const contract = node.contract;
+        updateContractSelection(node.order);
+        info.innerHTML = `
+          <div class="info-title">
+            <strong>${node.order + 1}. ${escapeHtml(node.name)}</strong>
+            <span>${escapeHtml(contract.module)}${themeName ? ` · ${escapeHtml(themeName)}` : ""}</span>
+          </div>
+          <p class="info-role">${escapeHtml(contract.role)} · 상태 ${escapeHtml(node.status)}</p>
+          <div class="info-grid">
+            ${contractList("Input type", contract.inputs)}
+            ${contractList("Output type", contract.outputs)}
+            ${contractList("State reads", contract.reads)}
+            ${contractList("State writes", contract.writes)}
+          </div>
+        `;
+      }
+      function compactIo(title, values) {
+        return `
+          <div class="contract-io">
+            <b>${escapeHtml(title)}</b>
+            ${values.slice(0, 2).map((value) => `<code>${escapeHtml(value)}</code>`).join("")}
+          </div>
+        `;
+      }
+      function renderContractRail() {
+        contractRail.innerHTML = nodeData.map((node, index) => `
+          <div class="contract-step">
+            <article class="contract-card" data-order="${node.order}">
+              <div class="contract-node">
+                <span>${escapeHtml(node.label)}</span>
+                <em>${escapeHtml(node.status)}</em>
+              </div>
+              ${compactIo("Input", node.contract.inputs)}
+              ${compactIo("Output", node.contract.outputs)}
+            </article>
+            ${index < nodeData.length - 1 ? `<span class="contract-link">-></span>` : ""}
+          </div>
+        `).join("");
+      }
+      renderContractRail();
+      contractRail.addEventListener("click", (event) => {
+        const card = event.target.closest(".contract-card");
+        if (!card) return;
+        const node = nodeData.find((item) => item.order === Number(card.dataset.order));
+        if (node) showContract(node);
+      });
+      showContract(nodeData[0]);
 
       const actions = document.createElement("div");
       actions.id = "space-flow-actions";
@@ -490,7 +721,7 @@
 
         const node = hits[0].object.userData.node;
         const theme = hits[0].object.userData.theme;
-        info.innerHTML = `${node.order + 1}. ${node.label}<br><span style="color:#a0c3ec">${node.name}</span><br><span style="color:#7d8187">${node.status}</span><br><span style="color:#ffffff">${theme.name}</span>`;
+        showContract(node, theme.name);
       }
 
       renderer.domElement.addEventListener("click", inspectNode);
