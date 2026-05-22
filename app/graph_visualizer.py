@@ -1,0 +1,626 @@
+import json
+from pathlib import Path
+
+import streamlit as st
+
+
+NODE_STEPS = [
+    ("START", "START"),
+    ("검색 URL 생성", "URL"),
+    ("사람인 공고 크롤링", "CRAWL"),
+    ("공고 데이터 전처리", "PREP"),
+    ("LLM 적합도 평가", "LLM"),
+    ("결과 요약 생성", "SUM"),
+    ("결과 파일 저장", "SAVE"),
+    ("END", "END"),
+]
+
+
+def render_langgraph_flow(status=None):
+    """
+    LangGraph 노드 흐름을 Three.js 기반 3D 워크플로우 표면으로 시각화한다.
+
+    Streamlit 자체는 3D 엔진을 제공하지 않으므로 iframe 안에
+    Three.js 장면을 삽입한다. status 딕셔너리를 받아 각 단계 색상을 바꾼다.
+    """
+
+    status = status or {}
+    workflow_steps = [name for name, _ in NODE_STEPS if name not in ("START", "END")]
+    completed_count = sum(1 for step in workflow_steps if status.get(step) == "완료")
+    running_count = sum(1 for step in workflow_steps if status.get(step) == "진행중")
+    failed_count = sum(1 for step in workflow_steps if status.get(step) == "실패")
+    progress_percent = round((completed_count / len(workflow_steps)) * 100)
+    nodes = [
+        {
+            "name": name,
+            "label": label,
+            "status": status.get(name, "완료" if name in ("START", "END") else "대기"),
+            "order": index,
+        }
+        for index, (name, label) in enumerate(NODE_STEPS)
+    ]
+
+    nodes_json = json.dumps(nodes, ensure_ascii=False)
+    progress_json = json.dumps({
+        "completed": completed_count,
+        "running": running_count,
+        "failed": failed_count,
+        "total": len(workflow_steps),
+        "percent": progress_percent,
+    }, ensure_ascii=False)
+
+    html = f"""
+    <div id="space-flow-root">
+      <div id="space-flow-fallback">
+        LangGraph 3D flow is loading...
+      </div>
+    </div>
+
+    <style>
+      #space-flow-root {{
+        width: 100%;
+        height: 520px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #212327;
+        border-radius: 8px;
+        background: #0a0a0a;
+      }}
+      #space-flow-fallback {{
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #dadbdf;
+        font: 400 15px "Inter", system-ui, sans-serif;
+      }}
+      .node-label {{
+        position: absolute;
+        color: #ffffff;
+        font: 400 12px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        white-space: nowrap;
+      }}
+      .node-status {{
+        display: block;
+        margin-top: 3px;
+        color: #7d8187;
+        font: 400 10px "Inter", system-ui, sans-serif;
+        text-align: center;
+      }}
+      #space-flow-help {{
+        position: absolute;
+        left: 16px;
+        bottom: 14px;
+        padding: 8px 10px;
+        color: #ffffff;
+        background: rgba(10, 10, 10, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 9999px;
+        font: 400 11px "Geist Mono", "JetBrains Mono", Consolas, monospace;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+      }}
+      #space-flow-info {{
+        position: absolute;
+        right: 16px;
+        top: 14px;
+        min-width: 170px;
+        padding: 10px 12px;
+        color: #ffffff;
+        background: rgba(25, 25, 25, 0.94);
+        border: 1px solid #212327;
+        border-radius: 8px;
+        font: 400 12px "Inter", system-ui, sans-serif;
+      }}
+      #space-flow-progress {{
+        position: absolute;
+        left: 16px;
+        top: 14px;
+        width: 220px;
+        padding: 12px;
+        color: #ffffff;
+        background: rgba(25, 25, 25, 0.94);
+        border: 1px solid #212327;
+        border-radius: 8px;
+        font: 400 12px "Inter", system-ui, sans-serif;
+      }}
+      #space-flow-progress strong {{
+        display: block;
+        color: #ffffff;
+        font: 400 28px "Inter", system-ui, sans-serif;
+        margin-bottom: 6px;
+      }}
+      .progress-track {{
+        height: 7px;
+        overflow: hidden;
+        margin-top: 10px;
+        background: #212327;
+        border-radius: 999px;
+      }}
+      .progress-fill {{
+        height: 100%;
+        background: #ffffff;
+        border-radius: 999px;
+      }}
+      #space-flow-actions {{
+        position: absolute;
+        right: 16px;
+        bottom: 14px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: 360px;
+      }}
+      #space-flow-actions button {{
+        cursor: pointer;
+        min-height: 36px;
+        color: #ffffff;
+        background: rgba(10, 10, 10, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 9999px;
+        padding: 8px 14px;
+        font: 400 12px "Inter", system-ui, sans-serif;
+      }}
+      #space-flow-actions button:hover {{
+        background: #1a1c20;
+      }}
+      #space-flow-actions button:active {{
+        color: #0a0a0a;
+        background: #ffffff;
+        border-color: #ffffff;
+      }}
+    </style>
+
+    <script type="importmap">
+      {{
+        "imports": {{
+          "three": "https://unpkg.com/three@0.161.0/build/three.module.js"
+        }}
+      }}
+    </script>
+
+    <script type="module">
+      import * as THREE from "three";
+      import {{ OrbitControls }} from "https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js";
+
+      const root = document.getElementById("space-flow-root");
+      const fallback = document.getElementById("space-flow-fallback");
+      const nodeData = {nodes_json};
+      const progressData = {progress_json};
+      const help = document.createElement("div");
+      help.id = "space-flow-help";
+      help.textContent = "Workflow surface";
+      root.appendChild(help);
+
+      const progress = document.createElement("div");
+      progress.id = "space-flow-progress";
+      progress.innerHTML = `
+        <strong>${{progressData.percent}}%</strong>
+        완료 ${{progressData.completed}} / ${{progressData.total}}
+        · 진행중 ${{progressData.running}}
+        · 실패 ${{progressData.failed}}
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${{progressData.percent}}%"></div>
+        </div>
+      `;
+      root.appendChild(progress);
+
+      const info = document.createElement("div");
+      info.id = "space-flow-info";
+      info.innerHTML = "Selected<br><span style='color:#a0c3ec'>LangGraph Flow</span>";
+      root.appendChild(info);
+
+      const actions = document.createElement("div");
+      actions.id = "space-flow-actions";
+      actions.innerHTML = `
+        <button data-camera="front">Front</button>
+        <button data-camera="top">Top</button>
+        <button data-camera="side">Side</button>
+        <button data-camera="wide">Wide</button>
+        <button data-action="pause">Pause</button>
+      `;
+      root.appendChild(actions);
+
+      fallback.style.display = "none";
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.Fog(0x0a0a0a, 13, 42);
+
+      const camera = new THREE.PerspectiveCamera(52, root.clientWidth / root.clientHeight, 0.1, 100);
+      camera.position.set(0, 3.9, 15.5);
+      camera.lookAt(0, 0, 0);
+
+      const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: true }});
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(root.clientWidth, root.clientHeight);
+      root.appendChild(renderer.domElement);
+      renderer.domElement.style.touchAction = "none";
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.enablePan = true;
+      controls.enableZoom = true;
+      controls.minDistance = 8.5;
+      controls.maxDistance = 26;
+      controls.maxPolarAngle = Math.PI * 0.82;
+      controls.minPolarAngle = Math.PI * 0.18;
+
+      let paused = false;
+      function moveCamera(position) {{
+        camera.position.set(position.x, position.y, position.z);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+      }}
+      actions.addEventListener("click", (event) => {{
+        const button = event.target.closest("button");
+        if (!button) return;
+        const cameraMode = button.dataset.camera;
+        if (cameraMode === "front") moveCamera({{ x: 0, y: 3.9, z: 15.5 }});
+        if (cameraMode === "top") moveCamera({{ x: 0, y: 17.5, z: 0.8 }});
+        if (cameraMode === "side") moveCamera({{ x: 16.5, y: 3.8, z: 2.5 }});
+        if (cameraMode === "wide") moveCamera({{ x: 0, y: 8.5, z: 24 }});
+        if (button.dataset.action === "pause") {{
+          paused = !paused;
+          button.textContent = paused ? "Play" : "Pause";
+        }}
+      }});
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.82);
+      scene.add(ambient);
+
+      const keyLight = new THREE.PointLight(0xffffff, 1.9, 40);
+      keyLight.position.set(-6, 8, 8);
+      scene.add(keyLight);
+
+      const accentLight = new THREE.PointLight(0xff7a17, 0.72, 35);
+      accentLight.position.set(7, -3, 6);
+      scene.add(accentLight);
+
+      const statusColor = {{
+        "대기": 0x7d8187,
+        "진행중": 0xff7a17,
+        "완료": 0xffffff,
+        "실패": 0xc4b5fd,
+      }};
+
+      const planetThemes = [
+        {{ color: 0xffffff, emissive: 0xff7a17, geometry: "sun", name: "Start" }},
+        {{ color: 0xffffff, emissive: 0xa0c3ec, geometry: "sphere", name: "Search URL" }},
+        {{ color: 0xa0c3ec, emissive: 0xa0c3ec, geometry: "dodeca", name: "Crawler" }},
+        {{ color: 0xc4b5fd, emissive: 0xc4b5fd, geometry: "ico", name: "Preprocess" }},
+        {{ color: 0xffc285, emissive: 0xff7a17, geometry: "octa", name: "Evaluation" }},
+        {{ color: 0xffffff, emissive: 0xc4b5fd, geometry: "sphere", name: "Summary" }},
+        {{ color: 0xffffff, emissive: 0xa0c3ec, geometry: "dodeca", name: "Save" }},
+        {{ color: 0xdadbdf, emissive: 0xffffff, geometry: "moon", name: "End" }},
+      ];
+
+      function createPlanetGeometry(kind, radius) {{
+        if (kind === "dodeca") return new THREE.DodecahedronGeometry(radius, 1);
+        if (kind === "ico") return new THREE.IcosahedronGeometry(radius, 2);
+        if (kind === "octa") return new THREE.OctahedronGeometry(radius, 2);
+        return new THREE.SphereGeometry(radius, 56, 34);
+      }}
+
+      function mixColor(baseColor, statusTint, statusName) {{
+        const base = new THREE.Color(baseColor);
+        const tint = new THREE.Color(statusTint);
+        const ratio = statusName === "대기" ? 0.22 : statusName === "완료" ? 0.34 : statusName === "진행중" ? 0.52 : 0.62;
+        return base.lerp(tint, ratio).getHex();
+      }}
+
+      const nodeGroup = new THREE.Group();
+      scene.add(nodeGroup);
+
+      const labels = [];
+      const planets = [];
+      const positions = [];
+      const satellites = [];
+      const planetRings = [];
+
+      nodeData.forEach((node, index) => {{
+        const t = index / (nodeData.length - 1);
+        const x = -8.8 + t * 17.6;
+        const y = Math.sin(t * Math.PI * 2.2) * 1.35;
+        const z = Math.cos(t * Math.PI * 1.5) * 1.15;
+        positions.push(new THREE.Vector3(x, y, z));
+
+        const color = statusColor[node.status] || statusColor["대기"];
+        const theme = planetThemes[index % planetThemes.length];
+        const planetColor = mixColor(theme.color, color, node.status);
+        const radius = index === 0 || index === nodeData.length - 1 ? 0.36 : 0.48;
+
+        const planet = new THREE.Mesh(
+          createPlanetGeometry(theme.geometry, radius),
+          new THREE.MeshStandardMaterial({{
+            color: planetColor,
+            emissive: theme.emissive,
+            emissiveIntensity: node.status === "진행중" ? 0.72 : index === 0 ? 0.55 : 0.22,
+            roughness: index === 7 ? 0.72 : 0.34,
+            metalness: index === 7 ? 0.04 : 0.24,
+          }})
+        );
+        planet.position.set(x, y, z);
+        planet.userData.baseY = y;
+        planet.userData.phase = index * 0.55;
+        planet.userData.node = node;
+        planet.userData.kind = "main";
+        planet.userData.theme = theme;
+        planet.userData.statusColor = color;
+        nodeGroup.add(planet);
+        planets.push(planet);
+
+        if (index === 0) {{
+          const sunGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(radius * 1.85, 48, 24),
+            new THREE.MeshBasicMaterial({{
+              color: 0xff7a17,
+              transparent: true,
+              opacity: 0.18,
+              depthWrite: false,
+            }})
+          );
+          sunGlow.position.copy(planet.position);
+          sunGlow.userData.parent = planet;
+          nodeGroup.add(sunGlow);
+          planetRings.push(sunGlow);
+        }}
+
+        if (index === nodeData.length - 1) {{
+          const moonCrater = new THREE.Mesh(
+            new THREE.SphereGeometry(radius * 0.22, 18, 12),
+            new THREE.MeshBasicMaterial({{ color: 0x7d8187, transparent: true, opacity: 0.78 }})
+          );
+          moonCrater.position.set(x + radius * 0.32, y + radius * 0.18, z + radius * 0.72);
+          moonCrater.userData.parent = planet;
+          moonCrater.userData.offset = new THREE.Vector3(radius * 0.32, radius * 0.18, radius * 0.72);
+          nodeGroup.add(moonCrater);
+          planetRings.push(moonCrater);
+        }}
+
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(radius * 1.75, 0.012, 12, 96),
+          new THREE.MeshBasicMaterial({{
+            color: planetColor,
+            transparent: true,
+            opacity: node.status === "진행중" ? 0.76 : 0.36,
+          }})
+        );
+        ring.position.copy(planet.position);
+        ring.rotation.x = Math.PI / 2.7;
+        ring.rotation.z = index * 0.3;
+        nodeGroup.add(ring);
+        planetRings.push(ring);
+
+        const progressOrbit = new THREE.Mesh(
+          new THREE.TorusGeometry(radius * 2.25, 0.006, 10, 90),
+          new THREE.MeshBasicMaterial({{
+            color,
+            transparent: true,
+            opacity: node.status === "대기" ? 0.12 : 0.42,
+          }})
+        );
+        progressOrbit.position.copy(planet.position);
+        progressOrbit.rotation.x = Math.PI / 2;
+        progressOrbit.rotation.y = index * 0.22;
+        nodeGroup.add(progressOrbit);
+        planetRings.push(progressOrbit);
+
+        const satelliteCount = index === 0 || index === nodeData.length - 1 ? 3 : 5;
+        for (let s = 0; s < satelliteCount; s += 1) {{
+          const satColor = s % 2 === 0 ? 0xdadbdf : 0xff7a17;
+          const satellite = new THREE.Mesh(
+            new THREE.SphereGeometry(0.055 + s * 0.006, 18, 10),
+            new THREE.MeshBasicMaterial({{
+              color: satColor,
+              transparent: true,
+              opacity: 0.86,
+            }})
+          );
+          satellite.userData.parent = planet;
+          satellite.userData.distance = radius * (2.15 + s * 0.34);
+          satellite.userData.speed = 0.65 + s * 0.12;
+          satellite.userData.phase = index * 0.7 + s * 1.15;
+          satellite.userData.tilt = 0.35 + s * 0.11;
+          satellites.push(satellite);
+          nodeGroup.add(satellite);
+        }}
+
+        const label = document.createElement("div");
+        label.className = "node-label";
+        label.innerHTML = `<span>${{node.order + 1}}. ${{node.label}}</span><span class="node-status">${{node.status}}</span>`;
+        root.appendChild(label);
+        labels.push({{ element: label, target: planet }});
+      }});
+
+      const pathPoints = [];
+      for (let i = 0; i < positions.length - 1; i += 1) {{
+        const start = positions[i];
+        const end = positions[i + 1];
+        for (let j = 0; j < 18; j += 1) {{
+          const p = start.clone().lerp(end, j / 18);
+          p.y += Math.sin((j / 18) * Math.PI) * 0.35;
+          pathPoints.push(p);
+        }}
+      }}
+      pathPoints.push(positions[positions.length - 1].clone());
+
+      const curve = new THREE.CatmullRomCurve3(pathPoints);
+      const tube = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 220, 0.025, 10, false),
+        new THREE.MeshBasicMaterial({{ color: 0xffffff, transparent: true, opacity: 0.18 }})
+      );
+      scene.add(tube);
+
+      const secondaryLineMaterial = new THREE.LineBasicMaterial({{
+        color: 0xa0c3ec,
+        transparent: true,
+        opacity: 0.22,
+      }});
+      const networkGroup = new THREE.Group();
+      scene.add(networkGroup);
+
+      const networkPairs = [
+        [1, 3], [1, 5], [2, 4], [2, 6], [3, 6], [0, 4], [4, 7]
+      ];
+      networkPairs.forEach(([a, b]) => {{
+        const start = positions[a];
+        const end = positions[b];
+        const mid = start.clone().lerp(end, 0.5);
+        mid.y += 1.8 + Math.sin(a + b) * 0.5;
+        mid.z -= 1.3;
+        const arc = new THREE.CatmullRomCurve3([start, mid, end]);
+        const points = arc.getPoints(64);
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const line = new THREE.Line(geometry, secondaryLineMaterial.clone());
+        line.userData.phase = a * 0.4 + b * 0.2;
+        networkGroup.add(line);
+      }});
+
+      const packet = new THREE.Mesh(
+        new THREE.SphereGeometry(0.16, 32, 16),
+        new THREE.MeshStandardMaterial({{
+          color: 0xffffff,
+          emissive: 0xff7a17,
+          emissiveIntensity: 0.95,
+        }})
+      );
+      scene.add(packet);
+
+      function createStarLayer(count, spread, color, size, opacity) {{
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const colors = [];
+        const base = new THREE.Color(color);
+        for (let i = 0; i < count; i += 1) {{
+          vertices.push(
+            (Math.random() - 0.5) * spread.x,
+            (Math.random() - 0.5) * spread.y,
+            (Math.random() - 0.5) * spread.z
+          );
+          const twinkle = 0.68 + Math.random() * 0.32;
+          colors.push(base.r * twinkle, base.g * twinkle, base.b * twinkle);
+        }}
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+        return new THREE.Points(
+          geometry,
+          new THREE.PointsMaterial({{
+            size,
+            transparent: true,
+            opacity,
+            vertexColors: true,
+            depthWrite: false,
+          }})
+        );
+      }}
+
+      const guideDotsNear = createStarLayer(260, {{ x: 36, y: 18, z: 24 }}, 0xa0c3ec, 0.026, 0.34);
+      const guideDotsFar = createStarLayer(520, {{ x: 70, y: 34, z: 52 }}, 0xdadbdf, 0.016, 0.24);
+      scene.add(guideDotsFar, guideDotsNear);
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+
+      function inspectNode(event) {{
+        const rect = renderer.domElement.getBoundingClientRect();
+        const clientX = event.clientX ?? event.changedTouches?.[0]?.clientX;
+        const clientY = event.clientY ?? event.changedTouches?.[0]?.clientY;
+        if (clientX === undefined || clientY === undefined) return;
+
+        pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(planets, false);
+        if (!hits.length) return;
+
+        const node = hits[0].object.userData.node;
+        const theme = hits[0].object.userData.theme;
+        info.innerHTML = `${{node.order + 1}}. ${{node.label}}<br><span style="color:#a0c3ec">${{node.name}}</span><br><span style="color:#7d8187">${{node.status}}</span><br><span style="color:#ffffff">${{theme.name}}</span>`;
+      }}
+
+      renderer.domElement.addEventListener("click", inspectNode);
+      renderer.domElement.addEventListener("touchend", inspectNode);
+
+      function updateLabels() {{
+        labels.forEach((item) => {{
+          const vector = item.target.position.clone();
+          vector.project(camera);
+          const x = (vector.x * 0.5 + 0.5) * root.clientWidth;
+          const y = (-vector.y * 0.5 + 0.5) * root.clientHeight + 44;
+          item.element.style.left = `${{x}}px`;
+          item.element.style.top = `${{y}}px`;
+        }});
+      }}
+
+      function animate(time) {{
+        const elapsed = time * 0.001;
+
+        if (!paused) {{
+          guideDotsFar.rotation.y = elapsed * 0.008;
+          guideDotsNear.rotation.y = elapsed * 0.018;
+          nodeGroup.rotation.y = Math.sin(elapsed * 0.22) * 0.08;
+          networkGroup.rotation.y = Math.sin(elapsed * 0.16) * 0.045;
+        }}
+
+        planets.forEach((planet) => {{
+          if (!paused) {{
+            planet.rotation.y += planet.userData.node.status === "진행중" ? 0.026 : 0.012;
+            planet.position.y = planet.userData.baseY + Math.sin(elapsed * 1.2 + planet.userData.phase) * 0.08;
+          }}
+        }});
+
+        satellites.forEach((satellite) => {{
+          const parent = satellite.userData.parent;
+          const angle = elapsed * satellite.userData.speed + satellite.userData.phase;
+          const distance = satellite.userData.distance;
+          satellite.position.set(
+            parent.position.x + Math.cos(angle) * distance,
+            parent.position.y + Math.sin(angle * 1.4) * distance * satellite.userData.tilt,
+            parent.position.z + Math.sin(angle) * distance
+          );
+        }});
+
+        planetRings.forEach((item) => {{
+          if (item.userData.parent && item.userData.offset) {{
+            item.position.copy(item.userData.parent.position).add(item.userData.offset);
+          }} else if (item.userData.parent) {{
+            item.position.copy(item.userData.parent.position);
+          }}
+          if (!paused) item.rotation.z += 0.004;
+        }});
+
+        networkGroup.children.forEach((line) => {{
+          line.material.opacity = 0.14 + Math.sin(elapsed * 1.1 + line.userData.phase) * 0.06 + 0.08;
+        }});
+
+        const packetPoint = curve.getPoint(((paused ? 0 : elapsed) * 0.08) % 1);
+        packet.position.copy(packetPoint);
+
+        controls.update();
+        updateLabels();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }}
+
+      window.addEventListener("resize", () => {{
+        camera.aspect = root.clientWidth / root.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(root.clientWidth, root.clientHeight);
+      }});
+
+      requestAnimationFrame(animate);
+    </script>
+    """
+
+    output_dir = Path(__file__).resolve().parent / "_generated"
+    output_dir.mkdir(exist_ok=True)
+    html_path = output_dir / "langgraph_space_flow.html"
+    html_path.write_text(html, encoding="utf-8")
+
+    st.iframe(html_path, height=540, width="stretch")
