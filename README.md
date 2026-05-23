@@ -18,15 +18,15 @@
 
 ## 기술 스택
 
-| 영역 | 사용 기술 |
-| --- | --- |
-| 언어 | Python |
-| 크롤링 | requests, BeautifulSoup |
-| LLM 체인 | LangChain, langchain-openai |
-| 워크플로우 | LangGraph |
-| UI | Streamlit |
-| 시각화 | Three.js, OrbitControls |
-| 데이터 모델 | Pydantic |
+| 영역        | 사용 기술                   |
+| ----------- | --------------------------- |
+| 언어        | Python                      |
+| 크롤링      | requests, BeautifulSoup     |
+| LLM 체인    | LangChain, langchain-openai |
+| 워크플로우  | LangGraph                   |
+| UI          | Streamlit                   |
+| 시각화      | Three.js, OrbitControls     |
+| 데이터 모델 | Pydantic                    |
 
 ## 동작 구조
 
@@ -259,11 +259,11 @@ job_items = soup.select("div.item_recruit, div.cell.job_item")
 
 판정 기준:
 
-| 점수 | 판정 | 지원 추천 |
-| --- | --- | --- |
-| 90 이상 | 적합 | 즉시지원 |
+| 점수            | 판정     | 지원 추천  |
+| --------------- | -------- | ---------- |
+| 90 이상         | 적합     | 즉시지원   |
 | 70 이상 90 미만 | 보완필요 | 보완후지원 |
-| 70 미만 | 부적합 | 비추천 |
+| 70 미만         | 부적합   | 비추천     |
 
 ## 결과 저장
 
@@ -276,30 +276,18 @@ data/results/
 └── report_YYYYMMDD_HHMMSS.md
 ```
 
-| 파일 | 내용 |
-| --- | --- |
-| JSON | 평가 결과 전체, 생성 시각, 요약 정보 |
-| CSV | 핵심 평가 컬럼을 표 형태로 저장 |
+| 파일     | 내용                                                    |
+| -------- | ------------------------------------------------------- |
+| JSON     | 평가 결과 전체, 생성 시각, 요약 정보                    |
+| CSV      | 핵심 평가 컬럼을 표 형태로 저장                         |
 | Markdown | 사용자 정보, 통계, 추천 공고, 학습 계획, 상위 상세 평가 |
 
 ## Streamlit 화면
 
 웹앱은 다음 화면을 제공합니다.
 
-- 프로필 입력 사이드바
-- 검색어 입력
-- 단계별 상태 metric
-- Three.js LangGraph 3D 진행 표면과 노드별 input/output 데이터 타입 흐름
-- 추천 공고와 부족 역량 대시보드
-- 공고별 상세 평가 expander
-- JSON, CSV, Markdown 다운로드 버튼
-
 3D 화면은 [app/graph_visualizer.py](app/graph_visualizer.py)가 HTML을 생성해 `app/_generated/langgraph_space_flow.html`에 저장한 뒤 iframe으로 렌더링합니다. 화면 하단의 `Data contract flow` 레일은 각 단계의 input/output 타입 흐름을 보여주며, 노드나 타입 카드를 선택하면 해당 단계가 읽고 쓰는 `JobSearchState` 키까지 상세 패널에서 확인할 수 있습니다. Three.js와 OrbitControls는 CDN에서 불러오므로 브라우저가 외부 리소스에 접근할 수 있어야 합니다.
 
-## 설정 메모
-
-- `config.py`에서 사람인 URL, 요청 timeout, LLM 모델, 결과 저장 경로를 관리합니다.
-- 일반 크롤러 함수의 기본 페이지 수는 `MAX_PAGES`를 사용합니다.
 - 현재 LangGraph 워크플로우와 LangChain tool 래퍼는 2페이지 수집으로 호출합니다.
 - 크롤링 요청 사이에는 2초 대기 시간이 있습니다.
 - 공고별 LLM 평가 호출 사이에는 1초 대기 시간이 있습니다.

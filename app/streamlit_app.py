@@ -39,8 +39,8 @@ def apply_xai_theme():
             --cursor-primary-active: #fafaf7;
             --cursor-ink: #ffffff;
             --cursor-body: #dadbdf;
-            --cursor-muted: #7d8187;
-            --cursor-muted-soft: #363a3f;
+            --cursor-muted: #a0a8af;
+            --cursor-muted-soft: #4a525b;
             --cursor-canvas: #0a0a0a;
             --cursor-canvas-soft: #1a1c20;
             --cursor-card: #191919;
@@ -147,6 +147,7 @@ def apply_xai_theme():
         div.stDownloadButton > button {
             min-height: 40px;
             padding: 10px 18px;
+            margin: 8px 0;
             border: 1px solid var(--cursor-hairline-strong);
             border-radius: 9999px;
             color: var(--cursor-ink);
@@ -189,6 +190,7 @@ def apply_xai_theme():
             font: 400 11px "Geist Mono", "JetBrains Mono", Consolas, monospace;
             letter-spacing: 1.2px;
             text-transform: uppercase;
+            opacity: 1;
         }
 
         [data-testid="stMetricValue"] {
@@ -313,7 +315,7 @@ def apply_xai_theme():
 
         .cursor-hero-band {
             min-height: 620px;
-            margin: 0 -24px;
+            margin: 0 -24px 80px;
             padding: 80px 24px 64px;
             display: grid;
             grid-template-columns: 1fr;
@@ -351,6 +353,7 @@ def apply_xai_theme():
         .cursor-hero-actions {
             gap: 12px;
             margin-top: 32px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
         }
 
@@ -464,8 +467,8 @@ def apply_xai_theme():
         }
 
         .cursor-query-band {
-            margin: 0 -24px;
-            padding: 48px 24px 32px;
+            margin: 40px -24px;
+            padding: 48px 24px 48px;
             border-top: 1px solid var(--cursor-hairline);
             border-bottom: 1px solid var(--cursor-hairline);
             background: var(--cursor-canvas);
@@ -482,8 +485,8 @@ def apply_xai_theme():
         }
 
         .cursor-workflow-intro {
-            margin: 0 -24px;
-            padding: 72px 24px 32px;
+            margin: 80px -24px 0;
+            padding: 80px 24px 48px;
             color: var(--cursor-ink);
             background: var(--cursor-canvas);
         }
@@ -501,7 +504,8 @@ def apply_xai_theme():
 
         .cursor-status-key {
             gap: 12px;
-            margin-top: 20px;
+            margin-top: 28px;
+            margin-bottom: 32px;
             color: var(--cursor-ink);
             font-size: 14px;
             flex-wrap: wrap;
@@ -689,10 +693,6 @@ def render_shell_intro():
                     프로필과 채용공고를 비교해 적합도, 부족 스킬, 학습 우선순위를
                     한 흐름 안에서 차분하게 검토합니다.
                 </p>
-                <div class="cursor-hero-actions">
-                    <span class="cursor-button">워크플로우 실행</span>
-                    <span class="cursor-button-secondary">결과 대시보드</span>
-                </div>
             </div>
             <div class="cursor-ide-card">
                 <div class="cursor-ide-pane cursor-file-tree">
@@ -799,33 +799,43 @@ def render_graph(graph_area, status):
         render_langgraph_flow(status)
 
 
-def build_user_profile():
-    """사이드바 입력값으로 사용자 프로필 딕셔너리를 만든다."""
+def render_profile_intro():
+    """프로필 입력 섹션 제목과 설명을 렌더링한다."""
 
-    st.sidebar.markdown(
+    st.markdown(
         """
-        <div class="cursor-sidebar-note">
-            <strong>Candidate profile</strong>
-            <span>공고 평가 기준이 되는 선호 조건과 현재 역량을 입력합니다.</span>
-        </div>
+        <section class="cursor-query-band">
+            <p class="cursor-eyebrow">Candidate profile</p>
+            <h3>지원자 프로필</h3>
+            <p>공고 평가 기준이 되는 선호 조건과 현재 역량을 입력합니다.</p>
+        </section>
         """,
         unsafe_allow_html=True,
     )
-    st.sidebar.markdown("## 사용자 프로필")
-    st.sidebar.caption("검색 기준과 지원 가능성을 함께 비교합니다.")
 
-    name = st.sidebar.text_input("이름", "홍길동")
-    skills = st.sidebar.text_input("보유 스킬", "Python, SQL, FastAPI, LangChain")
-    certifications = st.sidebar.text_input("자격증", "정보처리기사")
-    preferred_locations = st.sidebar.text_input("희망 지역", "서울, 경기")
-    preferred_employment_types = st.sidebar.text_input("희망 근무형태", "정규직")
-    education = st.sidebar.selectbox(
-        "최종 학력",
-        ["고졸", "초대졸", "학사", "석사", "박사"],
-        index=2,
-    )
-    career_level = st.sidebar.text_input("경력", "신입")
-    interested_jobs = st.sidebar.text_input("관심 직무", "AI 개발자, 백엔드 개발자")
+
+def build_user_profile():
+    """메인 화면에서 사용자 프로필 입력값으로 프로필 딕셔너리를 만든다."""
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        name = st.text_input("이름", "홍길동")
+        skills = st.text_input("보유 스킬", "Python, SQL, FastAPI, LangChain")
+        certifications = st.text_input("자격증", "정보처리기사")
+
+    with col2:
+        preferred_locations = st.text_input("희망 지역", "서울, 경기")
+        preferred_employment_types = st.text_input("희망 근무형태", "정규직")
+        education = st.selectbox(
+            "최종 학력",
+            ["고졸", "초대졸", "학사", "석사", "박사"],
+            index=2,
+        )
+
+    with col3:
+        career_level = st.text_input("경력", "신입")
+        interested_jobs = st.text_input("관심 직무", "AI 개발자, 백엔드 개발자")
 
     return {
         "name": name,
@@ -843,7 +853,7 @@ def main():
     st.set_page_config(page_title="사람인 공고 필터링 시스템", layout="wide")
     apply_xai_theme()
     render_shell_intro()
-
+    render_profile_intro()
     user_profile = build_user_profile()
     render_keyword_intro()
     keyword = st.text_input("검색할 직무", "AI 개발자")
