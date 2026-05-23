@@ -241,21 +241,26 @@ def render_langgraph_flow(status=None):
           radial-gradient(circle at 50% 50%, rgba(75, 0, 130, 0.08) 0%, transparent 60%),
           linear-gradient(135deg, #0a0a0a 0%, #0f0517 50%, #0a0a0a 100%);
       }}
-      #nebula-overlay {{
+      #nebula-overlay {
         position: absolute;
         inset: 0;
         pointer-events: none;
-        mix-blend-mode: screen;
-        opacity: 0.28; /* reduced for more subtle look */
+        mix-blend-mode: lighten;
+        opacity: 0.38;
         background:
-          radial-gradient(circle at 18% 28%, rgba(138, 43, 226, 0.14) 0%, transparent 22%),
-          radial-gradient(circle at 82% 72%, rgba(30, 144, 255, 0.10) 0%, transparent 20%),
-          radial-gradient(circle at 50% 40%, rgba(255, 102, 204, 0.07) 0%, transparent 26%), /* added slight pink wash */
-          radial-gradient(circle at 64% 24%, rgba(200, 120, 220, 0.04) 0%, transparent 30%);
-        filter: blur(28px); /* slightly less blur to add subtle definition */
+          /* 보라/파랑/주황/분홍/노랑 성운 레이어 */
+          radial-gradient(circle at 18% 28%, rgba(138, 43, 226, 0.19) 0%, transparent 22%),
+          radial-gradient(circle at 82% 72%, rgba(30, 144, 255, 0.16) 0%, transparent 20%),
+          radial-gradient(circle at 50% 40%, rgba(255, 102, 204, 0.13) 0%, transparent 26%),
+          radial-gradient(circle at 64% 24%, rgba(200, 120, 220, 0.09) 0%, transparent 30%),
+          radial-gradient(circle at 40% 60%, rgba(255, 200, 120, 0.10) 0%, transparent 32%),
+          radial-gradient(circle at 70% 20%, rgba(255, 255, 180, 0.08) 0%, transparent 30%),
+          radial-gradient(circle at 30% 80%, rgba(120, 220, 255, 0.08) 0%, transparent 30%),
+          radial-gradient(circle at 80% 40%, rgba(255, 120, 120, 0.07) 0%, transparent 30%);
+        filter: blur(36px) saturate(1.18);
         transform: translate3d(0,0,0);
         animation: nebulaShift 28s linear infinite alternate;
-      }}
+      }
 
       @keyframes nebulaShift {{
         0% {{ transform: translate(-4%, -1.5%) scale(1); opacity: 0.30; }}
@@ -648,13 +653,14 @@ def render_langgraph_flow(status=None):
       fallback.style.display = "none";
 
       const scene = new THREE.Scene();
-      scene.fog = new THREE.Fog(0x0a0a0a, 13, 42);
+      scene.fog = new THREE.Fog(0x090f1a, 16, 62);
 
       const camera = new THREE.PerspectiveCamera(52, root.clientWidth / root.clientHeight, 0.1, 100);
       camera.position.set(0, 3.9, 15.5);
       camera.lookAt(0, 0, 0);
 
       const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: true }});
+      renderer.setClearColor(0x03060d, 1);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(root.clientWidth, root.clientHeight);
       root.appendChild(renderer.domElement);
@@ -691,14 +697,14 @@ def render_langgraph_flow(status=None):
         }}
       }});
 
-      const ambient = new THREE.AmbientLight(0xffffff, 0.82);
+      const ambient = new THREE.AmbientLight(0xffffff, 1.05);
       scene.add(ambient);
 
-      const keyLight = new THREE.PointLight(0xffffff, 1.9, 40);
+      const keyLight = new THREE.PointLight(0xffffff, 2.2, 40);
       keyLight.position.set(-6, 8, 8);
       scene.add(keyLight);
 
-      const accentLight = new THREE.PointLight(0xff7a17, 0.72, 35);
+      const accentLight = new THREE.PointLight(0xff7a17, 0.88, 35);
       accentLight.position.set(7, -3, 6);
       scene.add(accentLight);
 
@@ -709,40 +715,13 @@ def render_langgraph_flow(status=None):
         "실패": 0xc4b5fd,
       }};
 
-      const planetThemes = [
-        {{ color: 0xffffff, emissive: 0xff7a17, geometry: "sun", name: "Start" }},
-        {{ color: 0xffffff, emissive: 0xa0c3ec, geometry: "sphere", name: "Search URL" }},
-        {{ color: 0xa0c3ec, emissive: 0xa0c3ec, geometry: "dodeca", name: "Crawler" }},
-        {{ color: 0xc4b5fd, emissive: 0xc4b5fd, geometry: "ico", name: "Preprocess" }},
-        {{ color: 0xffc285, emissive: 0xff7a17, geometry: "octa", name: "Evaluation" }},
-        {{ color: 0xffffff, emissive: 0xc4b5fd, geometry: "sphere", name: "Summary" }},
-        {{ color: 0xffffff, emissive: 0xa0c3ec, geometry: "dodeca", name: "Save" }},
-        {{ color: 0xdadbdf, emissive: 0xffffff, geometry: "moon", name: "End" }},
-      ];
-
-      function createPlanetGeometry(kind, radius) {{
-        if (kind === "dodeca") return new THREE.DodecahedronGeometry(radius, 1);
-        if (kind === "ico") return new THREE.IcosahedronGeometry(radius, 2);
-        if (kind === "octa") return new THREE.OctahedronGeometry(radius, 2);
-        return new THREE.SphereGeometry(radius, 56, 34);
-      }}
-
-      function mixColor(baseColor, statusTint, statusName) {{
-        const base = new THREE.Color(baseColor);
-        const tint = new THREE.Color(statusTint);
-        const ratio = statusName === "대기" ? 0.22 : statusName === "완료" ? 0.34 : statusName === "진행중" ? 0.52 : 0.62;
-        return base.lerp(tint, ratio).getHex();
-      }}
-
       const nodeGroup = new THREE.Group();
       scene.add(nodeGroup);
 
       const labels = [];
-      const planets = [];
+      const starNodes = [];
+      const starGlows = [];
       const positions = [];
-      const satellites = [];
-      const planetRings = [];
-      const progressMarkers = [];
 
       nodeData.forEach((node, index) => {{
         const t = index / (nodeData.length - 1);
@@ -752,134 +731,42 @@ def render_langgraph_flow(status=None):
         positions.push(new THREE.Vector3(x, y, z));
 
         const color = statusColor[node.status] || statusColor["대기"];
-        const theme = planetThemes[index % planetThemes.length];
-        const planetColor = mixColor(theme.color, color, node.status);
-        const radius = index === 0 || index === nodeData.length - 1 ? 0.36 : 0.48;
+        const radius = index === 0 || index === nodeData.length - 1 ? 0.28 : 0.22;
 
-        const planet = new THREE.Mesh(
-          createPlanetGeometry(theme.geometry, radius),
-          new THREE.MeshStandardMaterial({{
-            color: planetColor,
-            emissive: theme.emissive,
-            emissiveIntensity: node.status === "완료" ? 0.92 : node.status === "진행중" ? 0.72 : index === 0 ? 0.55 : 0.22,
-            roughness: index === 7 ? 0.72 : 0.34,
-            metalness: index === 7 ? 0.04 : 0.24,
-          }})
-        );
-        planet.position.set(x, y, z);
-        planet.userData.baseY = y;
-        planet.userData.phase = index * 0.55;
-        planet.userData.node = node;
-        planet.userData.kind = "main";
-        planet.userData.theme = theme;
-        planet.userData.statusColor = color;
-        nodeGroup.add(planet);
-        planets.push(planet);
-
-        if (index === 0) {{
-          const sunGlow = new THREE.Mesh(
-            new THREE.SphereGeometry(radius * 1.85, 48, 24),
-            new THREE.MeshBasicMaterial({{
-              color: 0xff7a17,
-              transparent: true,
-              opacity: 0.18,
-              depthWrite: false,
-            }})
-          );
-          sunGlow.position.copy(planet.position);
-          sunGlow.userData.parent = planet;
-          nodeGroup.add(sunGlow);
-          planetRings.push(sunGlow);
-        }}
-
-        if (index === nodeData.length - 1) {{
-          const moonCrater = new THREE.Mesh(
-            new THREE.SphereGeometry(radius * 0.22, 18, 12),
-            new THREE.MeshBasicMaterial({{ color: 0x7d8187, transparent: true, opacity: 0.78 }})
-          );
-          moonCrater.position.set(x + radius * 0.32, y + radius * 0.18, z + radius * 0.72);
-          moonCrater.userData.parent = planet;
-          moonCrater.userData.offset = new THREE.Vector3(radius * 0.32, radius * 0.18, radius * 0.72);
-          nodeGroup.add(moonCrater);
-          planetRings.push(moonCrater);
-        }}
-
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(radius * 1.75, 0.012, 12, 96),
-          new THREE.MeshBasicMaterial({{
-            color: planetColor,
-            transparent: true,
-            opacity: node.status === "진행중" ? 0.76 : 0.36,
-          }})
-        );
-        ring.position.copy(planet.position);
-        ring.rotation.x = Math.PI / 2.7;
-        ring.rotation.z = index * 0.3;
-        nodeGroup.add(ring);
-        planetRings.push(ring);
-
-        const progressOrbit = new THREE.Mesh(
-          new THREE.TorusGeometry(radius * 2.25, 0.006, 10, 90),
+        const star = new THREE.Mesh(
+          new THREE.SphereGeometry(radius, 28, 20),
           new THREE.MeshBasicMaterial({{
             color,
             transparent: true,
-            opacity: node.status === "대기" ? 0.12 : 0.42,
+            opacity: node.status === "완료" ? 0.98 : node.status === "진행중" ? 0.9 : 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
           }})
         );
-        progressOrbit.position.copy(planet.position);
-        progressOrbit.rotation.x = Math.PI / 2;
-        progressOrbit.rotation.y = index * 0.22;
-        nodeGroup.add(progressOrbit);
-        planetRings.push(progressOrbit);
+        star.position.set(x, y, z);
+        star.userData.node = node;
+        nodeGroup.add(star);
+        starNodes.push(star);
 
-        // per-node progress marker (position on orbit indicates progress)
-        const progressMarker = new THREE.Mesh(
-          new THREE.SphereGeometry(0.04, 12, 8),
-          new THREE.MeshStandardMaterial({
-            color: node.status === "완료" ? 0xffffff : node.status === "진행중" ? 0xff7a17 : 0xdadbdf,
-            emissive: node.status === "진행중" ? 0xff7a17 : 0x000000,
-            emissiveIntensity: node.status === "진행중" ? 0.9 : 0.0,
-            metalness: 0.12,
-            roughness: 0.38,
+        const glow = new THREE.Mesh(
+          new THREE.SphereGeometry(radius * 2.1, 24, 14),
+          new THREE.MeshBasicMaterial({{
+            color,
             transparent: true,
-            opacity: node.status === "대기" ? 0.18 : 1.0,
-          })
+            opacity: node.status === "진행중" ? 0.24 : 0.12,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          }})
         );
-        progressMarker.userData.parent = planet;
-        progressMarker.userData.radius = radius * 2.25;
-        // initial logical progress: completed=1, running=0.5, waiting=0
-        progressMarker.userData.progress = node.status === "완료" ? 1 : node.status === "진행중" ? 0.5 : 0;
-        progressMarker.userData.angleOffset = index * 0.35;
-        nodeGroup.add(progressMarker);
-        progressMarkers.push(progressMarker);
-
-        // reduce satellite count to keep scene clean and less noisy
-        const satelliteCount = index === 0 || index === nodeData.length - 1 ? 2 : 2;
-        for (let s = 0; s < satelliteCount; s += 1) {
-          const satColor = s % 2 === 0 ? 0xdadbdf : 0xff7a17;
-          const satellite = new THREE.Mesh(
-            new THREE.SphereGeometry(0.045 + s * 0.004, 12, 8),
-            new THREE.MeshBasicMaterial({
-              color: satColor,
-              transparent: true,
-              opacity: 0.78,
-            })
-          );
-          satellite.userData.parent = planet;
-          satellite.userData.distance = radius * (2.2 + s * 0.28);
-          // slower speeds to reduce visual clutter
-          satellite.userData.speed = 0.25 + s * 0.06;
-          satellite.userData.phase = index * 0.7 + s * 1.15;
-          satellite.userData.tilt = 0.25 + s * 0.08;
-          satellites.push(satellite);
-          nodeGroup.add(satellite);
-        }
+        glow.position.copy(star.position);
+        nodeGroup.add(glow);
+        starGlows.push(glow);
 
         const label = document.createElement("div");
         label.className = "node-label";
         label.innerHTML = `<span>${{node.order + 1}}. ${{node.label}}</span><span class="node-status">${{node.status}}</span>`;
         root.appendChild(label);
-        labels.push({{ element: label, target: planet }});
+        labels.push({{ element: label, target: star }});
       }});
 
       const pathPoints = [];
@@ -895,36 +782,33 @@ def render_langgraph_flow(status=None):
       pathPoints.push(positions[positions.length - 1].clone());
 
       const curve = new THREE.CatmullRomCurve3(pathPoints);
-      const tube = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 220, 0.025, 10, false),
-        new THREE.MeshBasicMaterial({{ color: 0xffffff, transparent: true, opacity: 0.18 }})
+      const energyTrack = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 220, 0.018, 12, false),
+        new THREE.MeshBasicMaterial({{
+          color: 0xa8d8ff,
+          transparent: true,
+          opacity: 0.24,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }})
       );
-      scene.add(tube);
+      scene.add(energyTrack);
 
-      const secondaryLineMaterial = new THREE.LineBasicMaterial({{
-        color: 0xa0c3ec,
+      const constellationLines = [];
+      const linkMaterial = new THREE.LineBasicMaterial({{
+        color: 0x9ccfff,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.36,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
       }});
-      const networkGroup = new THREE.Group();
-      scene.add(networkGroup);
-
-      const networkPairs = [
-        [1, 3], [1, 5], [2, 4], [2, 6], [3, 6], [0, 4], [4, 7]
-      ];
-      networkPairs.forEach(([a, b]) => {{
-        const start = positions[a];
-        const end = positions[b];
-        const mid = start.clone().lerp(end, 0.5);
-        mid.y += 1.8 + Math.sin(a + b) * 0.5;
-        mid.z -= 1.3;
-        const arc = new THREE.CatmullRomCurve3([start, mid, end]);
-        const points = arc.getPoints(64);
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const line = new THREE.Line(geometry, secondaryLineMaterial.clone());
-        line.userData.phase = a * 0.4 + b * 0.2;
-        networkGroup.add(line);
-      }});
+      for (let i = 0; i < positions.length - 1; i += 1) {{
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([positions[i], positions[i + 1]]);
+        const line = new THREE.Line(lineGeometry, linkMaterial.clone());
+        line.userData.phase = i * 0.38;
+        scene.add(line);
+        constellationLines.push(line);
+      }}
 
       const packet = new THREE.Mesh(
         new THREE.SphereGeometry(0.16, 32, 16),
@@ -947,7 +831,7 @@ def render_langgraph_flow(status=None):
             (Math.random() - 0.5) * spread.y,
             (Math.random() - 0.5) * spread.z
           );
-          const twinkle = 0.68 + Math.random() * 0.32;
+          const twinkle = 0.8 + Math.random() * 0.4;
           colors.push(base.r * twinkle, base.g * twinkle, base.b * twinkle);
         }}
         geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
@@ -960,12 +844,13 @@ def render_langgraph_flow(status=None):
             opacity,
             vertexColors: true,
             depthWrite: false,
+            blending: THREE.AdditiveBlending,
           }})
         );
       }}
 
-      const guideDotsNear = createStarLayer(260, {{ x: 36, y: 18, z: 24 }}, 0xa0c3ec, 0.026, 0.34);
-      const guideDotsFar = createStarLayer(520, {{ x: 70, y: 34, z: 52 }}, 0xdadbdf, 0.016, 0.24);
+      const guideDotsNear = createStarLayer(360, {{ x: 36, y: 18, z: 24 }}, 0xc8e7ff, 0.034, 0.62);
+      const guideDotsFar = createStarLayer(720, {{ x: 70, y: 34, z: 52 }}, 0xf5fbff, 0.021, 0.38);
       scene.add(guideDotsFar, guideDotsNear);
 
       const raycaster = new THREE.Raycaster();
@@ -980,12 +865,11 @@ def render_langgraph_flow(status=None):
         pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
         pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(pointer, camera);
-        const hits = raycaster.intersectObjects(planets, false);
+        const hits = raycaster.intersectObjects(starNodes, false);
         if (!hits.length) return;
 
         const node = hits[0].object.userData.node;
-        const theme = hits[0].object.userData.theme;
-        showContract(node, theme.name);
+        showContract(node, node.label);
       }}
 
       renderer.domElement.addEventListener("click", inspectNode);
@@ -1009,66 +893,29 @@ def render_langgraph_flow(status=None):
           guideDotsFar.rotation.y = elapsed * 0.008;
           guideDotsNear.rotation.y = elapsed * 0.018;
           nodeGroup.rotation.y = Math.sin(elapsed * 0.22) * 0.08;
-          networkGroup.rotation.y = Math.sin(elapsed * 0.16) * 0.045;
         }}
 
-        planets.forEach((planet) => {{
+        starNodes.forEach((star) => {{
           if (!paused) {{
-            planet.rotation.y += planet.userData.node.status === "진행중" ? 0.026 : 0.012;
-            planet.position.y = planet.userData.baseY + Math.sin(elapsed * 1.2 + planet.userData.phase) * 0.08;
+            star.rotation.y += star.userData.node.status === "진행중" ? 0.02 : 0.007;
           }}
         }});
 
-        satellites.forEach((satellite) => {{
-          const parent = satellite.userData.parent;
-          const angle = elapsed * satellite.userData.speed + satellite.userData.phase;
-          const distance = satellite.userData.distance;
-          satellite.position.set(
-            parent.position.x + Math.cos(angle) * distance,
-            parent.position.y + Math.sin(angle * 1.4) * distance * satellite.userData.tilt,
-            parent.position.z + Math.sin(angle) * distance
-          );
+        starGlows.forEach((glow, index) => {{
+          const pulse = 0.9 + Math.sin(elapsed * 1.5 + index) * 0.12;
+          glow.scale.setScalar(pulse);
+          glow.material.opacity = starNodes[index].userData.node.status === "진행중" ? 0.22 : 0.1;
         }});
 
-        // update per-node progress markers
-        progressMarkers.forEach((m) => {
-          const parent = m.userData.parent;
-          let prog = m.userData.progress;
-          const status = parent.userData.node.status;
-          if (status === "완료") {
-            prog = 1;
-          } else if (status === "진행중") {
-            // subtle pulsing progress while running
-            prog = 0.15 + 0.7 * (0.5 + 0.5 * Math.sin(elapsed * 0.9 + m.userData.angleOffset));
-          } else {
-            prog = 0;
-          }
-          const angle = prog * Math.PI * 2;
-          const d = m.userData.radius;
-          m.position.set(
-            parent.position.x + Math.cos(angle) * d,
-            parent.position.y + Math.sin(angle) * d * 0.12,
-            parent.position.z + Math.sin(angle) * d * 0.22
-          );
-          m.material.opacity = prog > 0.05 ? 1.0 : 0.12;
-        });
-
-        planetRings.forEach((item) => {{
-          if (item.userData.parent && item.userData.offset) {{
-            item.position.copy(item.userData.parent.position).add(item.userData.offset);
-          }} else if (item.userData.parent) {{
-            item.position.copy(item.userData.parent.position);
-          }}
-          // ring rotation disabled to reduce motion clutter
-          // if (!paused) item.rotation.z += 0.004;
+        constellationLines.forEach((line) => {{
+          line.material.opacity = 0.28 + Math.sin(elapsed * 1.1 + line.userData.phase) * 0.08;
         }});
 
-        networkGroup.children.forEach((line) => {{
-          line.material.opacity = 0.14 + Math.sin(elapsed * 1.1 + line.userData.phase) * 0.06 + 0.08;
-        }});
+        energyTrack.material.opacity = 0.24 + Math.sin(elapsed * 1.8) * 0.08;
 
         const packetPoint = curve.getPoint(((paused ? 0 : elapsed) * 0.08) % 1);
         packet.position.copy(packetPoint);
+        packet.scale.setScalar(1 + Math.sin(elapsed * 2.5) * 0.05);
 
         controls.update();
         updateLabels();
